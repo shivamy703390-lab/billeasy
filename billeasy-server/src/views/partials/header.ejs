@@ -1,0 +1,13 @@
+<header class="site-header">
+  <nav class="nav" aria-label="Main">
+    <a class="logo" href="/">Trae Store</a>
+    <button id="menu-toggle" class="icon-btn" aria-expanded="false" aria-controls="nav-links">☰</button>
+    <ul id="nav-links" class="nav-links">
+      <li><a href="/" <%= title==='Home'?'aria-current="page"':'' %>>Home</a></li>
+      <li><a href="/products" <%= title==='Products'?'aria-current="page"':'' %>>Products</a></li>
+      <li><a href="/events" <%= title==='Events'?'aria-current="page"':'' %>>Events</a></li>
+      <li><a href="/about" <%= title==='About'?'aria-current="page"':'' %>>About</a></li>
+    </ul>
+    <button id="theme-toggle" class="btn-outline" aria-label="Toggle theme">Toggle Theme</button>
+  </nav>
+</header>

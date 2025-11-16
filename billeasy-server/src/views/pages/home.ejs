@@ -1,0 +1,32 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/header', { title }) %>
+<main class="container">
+  <h1>Welcome</h1>
+  <p>This EJS view is loaded successfully.</p>
+
+  <!-- INSERT: Dashboard KPIs + links to inner pages -->
+  <section class="grid" style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:1rem">
+    <div id="card-new-users" class="card" style="padding:1rem;border:1px solid #e5e7eb;border-radius:8px">
+      <h3 style="margin:0 0 .5rem 0">New Users</h3>
+      <div style="font-size:1.5rem;font-weight:600"><span id="kpi-new-users">0</span></div>
+      <small>Click for details</small>
+    </div>
+    <div id="card-web-traffic" class="card" style="padding:1rem;border:1px solid #e5e7eb;border-radius:8px">
+      <h3 style="margin:0 0 .5rem 0">Web Traffic</h3>
+      <div style="font-size:1.5rem;font-weight:600"><span id="kpi-web-traffic">0</span></div>
+      <small>Click for details</small>
+    </div>
+    <div id="card-support-issues" class="card" style="padding:1rem;border:1px solid #e5e7eb;border-radius:8px">
+      <h3 style="margin:0 0 .5rem 0">Open Support Issues</h3>
+      <div style="font-size:1.5rem;font-weight:600"><span id="kpi-open-issues">0</span></div>
+      <small>Click for details</small>
+    </div>
+  </section>
+
+  <section style="margin-top:1.5rem;display:flex;gap:.75rem;flex-wrap:wrap">
+    <a href="/products" class="btn">View Products</a>
+    <a href="/events" class="btn">View Events</a>
+    <a href="/about" class="btn">About</a>
+  </section>
+</main>
+<%- include('../partials/footer') %>

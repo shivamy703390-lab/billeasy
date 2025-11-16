@@ -1,0 +1,31 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/header', { title }) %>
+
+<main>
+  <section class="page-header">
+    <div class="container">
+      <h1>About</h1>
+      <p>Built with EJS + MongoDB + Express.</p>
+    </div>
+  </section>
+
+  <section class="container">
+    <h2>FAQ</h2>
+    <div class="accordion" id="faq">
+      <div class="item">
+        <button class="accordion-header" aria-expanded="false">What is Trae Store?</button>
+        <div class="accordion-panel" hidden>
+          <p>A demo website showcasing responsive UI, JSON-driven content, and OOP in JavaScript.</p>
+        </div>
+      </div>
+      <div class="item">
+        <button class="accordion-header" aria-expanded="false">How are products loaded?</button>
+        <div class="accordion-panel" hidden>
+          <p>From MongoDB via REST, rendered in the UI using OOP components.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,48 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/header', { title }) %>
+
+<main>
+  <section class="page-header">
+    <div class="container">
+      <h1>Products</h1>
+      <p>Data-driven via /api/products. OOP renders product cards.</p>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="container controls-grid">
+      <div>
+        <label for="product-search">Search</label>
+        <input id="product-search" type="search" placeholder="Search products...">
+      </div>
+      <div>
+        <label for="category-filter">Category</label>
+        <select id="category-filter">
+          <option value="all">All</option>
+          <option value="Home">Home</option>
+          <option value="Tech">Tech</option>
+          <option value="Outdoor">Outdoor</option>
+          <option value="Books">Books</option>
+        </select>
+      </div>
+      <div>
+        <label for="sort-filter">Sort by</label>
+        <select id="sort-filter">
+          <option value="name-asc">Name (A–Z)</option>
+          <option value="name-desc">Name (Z–A)</option>
+          <option value="price-asc">Price (Low–High)</option>
+          <option value="price-desc">Price (High–Low)</option>
+          <option value="rating-desc">Rating (High–Low)</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="container">
+    <div id="product-grid" class="grid-3"></div>
+    <p id="product-empty" class="muted hidden">No products match your filters.</p>
+  </section>
+</main>
+
+<script src="/assets/js/products.js" defer></script>
+<%- include('../partials/footer') %>

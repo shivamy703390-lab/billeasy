@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BillEasy: GST Invoice Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* Configure Tailwind to use the Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .view-wrapper {
+            min-height: calc(100vh - 80px); /* Space for header */
+            padding: 2rem 0;
+        }
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Styling for printing: hide header and buttons */
+        @media print {
+            #app-header, 
+            #revenue-chart-modal, 
+            .print-hidden-actions {
+                display: none !important;
+            }
+            #report-view {
+                padding: 0;
+            }
+            /* Ensure tables and text are clearly visible */
+            body {
+                background-color: white !important;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <header id="app-header" class="bg-white shadow-lg sticky top-0 z-10 hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-extrabold text-indigo-700">
+                    <span class="text-gray-800">Bill</span>Easy
+                </h1>
+                <nav class="flex space-x-4">
+                    <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-btn text-gray-600 hover:text-indigo-600 font-medium transition-colors border-b-2 border-transparent hover:border-indigo-600 pb-1">
+                        Dashboard
+                    </button>
+                    <button onclick="navigateTo('report')" id="nav-report" class="nav-btn text-gray-600 hover:text-indigo-600 font-medium transition-colors border-b-2 border-transparent hover:border-indigo-600 pb-1">
+                        Reports
+                    </button>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-semibold transition-colors">
+                        Logout
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <div id="login-view" class="view-wrapper flex justify-center items-center h-screen w-full absolute top-0 left-0 bg-gray-50">
+            <div class="w-full max-w-sm bg-white p-8 sm:p-10 rounded-3xl card space-y-7 transition-all duration-300">
+                <h2 class="text-4xl font-extrabold text-center text-indigo-700">Sign In to BillEasy</h2>
+                <p class="text-center text-gray-500 text-sm">Welcome back! Use any input to gain access.</p>
+                
+                <div id="login-error-message" class="text-sm text-red-600 font-medium text-center hidden p-2 bg-red-50 rounded-lg"></div>
+
+                <div class="space-y-4">
+                    <input type="email" id="email" placeholder="Email" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" required>
+                    <input type="password" id="password" placeholder="Password" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" required>
+                </div>
+                
+                <button onclick="handleLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-indigo-200/50">
+                    Access Dashboard
+                </button>
+            </div>
+        </div>
+
+        <div id="dashboard-view" class="view-wrapper max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">BillEasy Item Entry Dashboard</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div onclick="showRevenueChart()" class="bg-white p-6 rounded-xl card border-l-4 border-indigo-500 cursor-pointer hover:shadow-xl transition duration-200">
+                    <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+                    <p class="text-3xl font-extrabold text-gray-900 mt-2" id="kpi-revenue">---</p>
+                    <p class="text-sm mt-3 text-green-600 font-semibold">↑ 12.5% (Click for Trend)</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl card border-l-4 border-blue-500">
+                    <p class="text-sm font-medium text-gray-500">New Users</p>
+                    <p class="text-3xl font-extrabold text-gray-900 mt-2" id="kpi-users">---</p>
+                    <p class="text-sm mt-3 text-red-600 font-semibold">↓ 3.1%</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl card border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-500">Web Traffic</p>
+                    <p class="text-3xl font-extrabold text-gray-900 mt-2" id="kpi-traffic">---</p>
+                    <p class="text-sm mt-3 text-green-600 font-semibold">↑ 8.9%</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl card border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-500">Open Support Issues</p>
+                    <p class="text-3xl font-extrabold text-gray-900 mt-2" id="kpi-issues">---</p>
+                    <p class="text-sm mt-3 text-green-600 font-semibold">↓ 20.0%</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl card border-t-4 border-indigo-500">
+                <h3 class="text-xl font-bold text-indigo-700 mb-4">Add Items for GST Calculation</h3>
+                <p class="text-sm text-gray-500 mb-4">Rates are applied based on keywords: 'food' (5%), 'phone'/'laptop' (12%), 'luxury' (28%), default (18%).</p>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <input type="text" id="itemName" placeholder="Item Name (e.g., Laptop, Food)" class="p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <input type="number" id="itemPrice" placeholder="Unit Price (INR)" min="1" class="p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <input type="number" id="itemQuantity" placeholder="Quantity" min="1" value="1" class="p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    
+                    <button onclick="addItem()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-md">
+                        Add Item to Cart
+                    </button>
+                </div>
+                
+                <div class="mt-6 border-t pt-4">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Items in Cart (<span id="cart-count">0</span>)</h4>
+                    <ul id="cart-list" class="space-y-2 text-sm max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                        <li class="text-center text-gray-500">Cart is empty.</li>
+                    </ul>
+                </div>
+                
+                <div class="flex space-x-4 mt-6">
+                    <button onclick="clearCart()" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg">
+                        Clear Cart
+                    </button>
+                    <button onclick="navigateTo('report')" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg">
+                        Calculate Report & GST &rarr;
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="report-view" class="view-wrapper max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">GST Calculation Report (Dynamic Rates Applied)</h2>
+            
+            <div class="bg-white p-6 rounded-xl card overflow-x-auto mb-6">
+                <h3 class="text-xl font-semibold mb-4 border-b pb-2 text-indigo-700">Detailed Invoice Items</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price/Unit (INR)</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">GST Rate</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Taxable Value (INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="report-body">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl card border-l-4 border-green-500">
+                <h3 class="text-xl font-bold mb-4 text-green-700">GST Summary</h3>
+                <div class="grid grid-cols-2 gap-4 text-lg">
+                    <div class="font-medium text-gray-600">Total Taxable Value (Subtotal):</div>
+                    <div class="text-right font-semibold text-gray-800" id="summary-subtotal">---</div>
+                    
+                    <div class="font-medium text-gray-600">Total GST Collected:</div>
+                    <div class="text-right font-semibold text-red-600" id="summary-gst">---</div>
+                    
+                    <div class="font-bold text-2xl text-indigo-700 border-t pt-3 mt-3">Grand Total:</div>
+                    <div class="text-right font-bold text-2xl text-indigo-700 border-t pt-3 mt-3" id="summary-grandtotal">---</div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 print-hidden-actions">
+                <button onclick="printInvoice()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5 4v2H3v6h14v-6h-2V4h-5V3h-4v1H5zm0 10v4h10v-4H5z" clip-rule="evenodd" />
+                    </svg>
+                    Print Invoice/Bill
+                </button>
+                <button onclick="downloadInvoice()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 2a.75.75 0 01.75.75v8.5l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 011.06-1.06L9.25 11.25V2.75A.75.75 0 0110 2z" />
+                        <path fill-rule="evenodd" d="M3.75 14.5a.75.75 0 01.75.75v1.75a.5.5 0 00.5.5h10.5a.5.5 0 00.5-.5v-1.75a.75.75 0 011.5 0v1.75c0 .71-.59 1.25-1.25 1.25H5.25c-.66 0-1.25-.59-1.25-1.25v-1.75a.75.75 0 01.75-.75z" clip-rule="evenodd" />
+                    </svg>
+                    Download Invoice (.txt)
+                </button>
+                <button onclick="navigateTo('dashboard')" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center justify-center">
+                    &larr; Return to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="revenue-chart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-white rounded-xl w-full max-w-4xl p-6 relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-900 text-3xl font-bold transition-colors leading-none">&times;</button>
+            <h3 class="text-2xl font-bold text-indigo-700 mb-6 border-b pb-2">Total Revenue Trend (Last 7 Months)</h3>
+            <div class="h-96">
+                <canvas id="revenueChart"></canvas>
+            </div>
+            <p class="mt-4 text-sm text-gray-500 text-center">Mock data is used for demonstration purposes.</p>
+        </div>
+    </div>
+
+
+    <script>
+        let currentPage = 'login';
+        
+        // --- Core Application State ---
+        let selectedItems = [];
+        
+        // INSERT: Configurable API base (reads from localStorage or ?api=PORT)
+        const DEFAULT_API_PORT =
+          localStorage.getItem('be_api_port') ||
+          new URLSearchParams(location.search).get('api') ||
+          (window.API_PORT || '3000');
+
+        const API_BASE =
+          localStorage.getItem('be_api_base') ||
+          `http://localhost:${DEFAULT_API_PORT}`;
+
+        let authToken = localStorage.getItem('be_token') || null;
+
+        // Mock Data for Dashboard KPIs (Kept for display)
+        const mockKPIs = {
+            revenue: 985620,
+            users: 1540,
+            traffic: 54000,
+            issues: 12
+        };
+
+        // Mock Data for the Revenue Chart
+        let revenueChartInstance = null;
+        const MOCK_REVENUE_DATA = [
+            { month: 'Jan', value: 75000 },
+            { month: 'Feb', value: 82000 },
+            { month: 'Mar', value: 95000 },
+            { month: 'Apr', value: 105000 },
+            { month: 'May', value: 120000 },
+            { month: 'Jun', value: 110000 },
+            { month: 'Jul', value: 135000 },
+        ];
+
+
+        /**
+         * Utility function to format currency (INR).
+         * Uses Math.round to ensure no decimal places in currency display.
+         * @param {number} amount
+         */
+        const formatCurrency = (amount) => `₹${Math.round(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+        const formatNumber = (amount) => amount.toLocaleString();
+        
+        /**
+         * Utility function to display temporary messages (used for login and item feedback).
+         * @param {string} message The text to display.
+         * @param {string} type 'success' or 'error'.
+         * @param {number} durationMs Duration in milliseconds.
+         */
+        function showTempMessage(message, type, durationMs = 2500) {
+            const errorEl = document.getElementById('login-error-message');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden', 'text-red-600', 'bg-red-50', 'text-green-600', 'bg-green-50');
+
+            if (type === 'success') {
+                errorEl.classList.add('text-green-600', 'bg-green-50');
+            } else {
+                errorEl.classList.add('text-red-600', 'bg-red-50');
+            }
+
+            setTimeout(() => {
+                errorEl.classList.add('hidden');
+            }, durationMs);
+        }
+
+        /**
+         * Determines the GST rate based on keywords in the item name.
+         * @param {string} itemName 
+         * @returns {{rate: number, display: string}} The GST rate value and display string.
+         */
+        function getGstRateDetails(itemName) {
+            const name = itemName.toLowerCase();
+            
+            if (name.includes('food') || name.includes('book') || name.includes('essential')) {
+                // 5% GST (Essentials/Low Tax)
+                return { rate: 0.05, display: '5.0%' };
+            } else if (name.includes('phone') || name.includes('laptop') || name.includes('electronic')) {
+                // 12% GST (Standard Electronics)
+                return { rate: 0.12, display: '12.0%' };
+            } else if (name.includes('luxury') || name.includes('car') || name.includes('yacht')) {
+                // 28% GST (Luxury Items)
+                return { rate: 0.28, display: '28.0%' };
+            } else {
+                // 18% GST (Default/General Goods and Services)
+                return { rate: 0.18, display: '18.0%' };
+            }
+        }
+
+        /**
+         * Triggers the browser's native print dialog.
+         */
+        function printInvoice() {
+            window.print();
+        }
+
+        /**
+         * Generates a simple text file summary of the invoice and triggers a download.
+         */
+        function downloadInvoice() {
+            // FIX: Use the dedicated message function to show feedback
+            if (selectedItems.length === 0) {
+                showTempMessage('Cannot download: Cart is empty. Add items first.', 'error', 3000);
+                return;
+            }
+            
+            let totalTaxableValue = 0;
+            let totalGST = 0;
+
+            // Build itemized list text and calculate totals
+            let itemsText = "--- ITEMIZED DETAILS ---\n";
+            selectedItems.forEach((item, index) => {
+                const taxableValue = item.price * item.quantity;
+                const itemGST = taxableValue * item.gstRate.rate;
+                
+                totalTaxableValue += taxableValue;
+                totalGST += itemGST;
+
+                itemsText += `${index + 1}. ${item.name.padEnd(15)} | Qty: ${item.quantity.toString().padEnd(4)} | Rate: ${item.gstRate.display.padEnd(5)} | Taxable: ${formatCurrency(taxableValue)}\n`;
+            });
+
+            const grandTotal = totalTaxableValue + totalGST;
+
+            const fileContent = `
+***** INVOICE/BILL SUMMARY *****
+
+Date: ${new Date().toLocaleDateString()}
+Invoice calculated using Dynamic GST Rates.
+
+${itemsText}
+
+---------------------------------
+Total Taxable Value (Subtotal): ${formatCurrency(totalTaxableValue)}
+Total GST Collected: ${formatCurrency(totalGST)}
+Grand Total: ${formatCurrency(grandTotal)}
+*********************************
+            `.trim();
+
+            // Create a Blob and trigger download
+            const blob = new Blob([fileContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'GST_Invoice_Report.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showTempMessage('✅ Invoice downloaded successfully!', 'success', 2500);
+        }
+
+        /**
+         * Handles view switching and updates the header visibility.
+         * @param {string} page The target view ('login', 'dashboard', 'report').
+         */
+        function navigateTo(page) {
+            currentPage = page;
+            
+            // Hide all views
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('report-view').classList.add('hidden');
+            document.getElementById('app-header').classList.add('hidden');
+            
+            // Hide modal if open
+            closeModal();
+            
+            // Show the correct view
+            const targetView = document.getElementById(`${page}-view`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                
+                // Show header for dashboard and report
+                if (page === 'dashboard' || page === 'report') {
+                    document.getElementById('app-header').classList.remove('hidden');
+                    // Update active navigation link styling
+                    document.querySelectorAll('.nav-btn').forEach(btn => {
+                        btn.classList.remove('text-indigo-600', 'border-indigo-600');
+                        btn.classList.add('text-gray-600', 'border-transparent');
+                    });
+                    const activeNavBtn = document.getElementById(`nav-${page}`);
+                    if (activeNavBtn) {
+                        activeNavBtn.classList.add('text-indigo-600', 'border-indigo-600');
+                        activeNavBtn.classList.remove('text-gray-600', 'border-transparent');
+                    }
+
+                    if (page === 'dashboard') {
+                        renderDashboard();
+                        renderCart(); // Update cart list on the dashboard
+                    } else if (page === 'report') {
+                        renderReport();
+                    }
+                }
+            }
+        }
+
+        /**
+         * Renders the mock data onto the dashboard KPIs.
+         */
+        function renderDashboard() {
+            document.getElementById('kpi-revenue').textContent = formatCurrency(mockKPIs.revenue);
+            document.getElementById('kpi-users').textContent = formatNumber(mockKPIs.users);
+            document.getElementById('kpi-traffic').textContent = formatNumber(mockKPIs.traffic);
+            document.getElementById('kpi-issues').textContent = formatNumber(mockKPIs.issues);
+        }
+
+        /**
+         * Displays the modal and renders the revenue chart using Chart.js.
+         */
+        function showRevenueChart() {
+            document.getElementById('revenue-chart-modal').classList.remove('hidden');
+
+            // Destroy existing chart instance if it exists to prevent redrawing issues
+            if (revenueChartInstance) {
+                revenueChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            if (!ctx) {
+                console.error("Could not get canvas context for revenueChart.");
+                return;
+            }
+
+            revenueChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: MOCK_REVENUE_DATA.map(d => d.month),
+                    datasets: [{
+                        label: 'Monthly Revenue (INR)',
+                        data: MOCK_REVENUE_DATA.map(d => d.value),
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#4f46e5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Revenue (INR)',
+                                font: { weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    // Format y-axis ticks as currency
+                                    return '₹' + value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatCurrency(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Hides the revenue chart modal.
+         */
+        function closeModal() {
+            document.getElementById('revenue-chart-modal').classList.add('hidden');
+        }
+
+        /**
+         * Adds an item from the form inputs to the selectedItems array, assigning GST rate.
+         */
+        function addItem() {
+            const nameInput = document.getElementById('itemName');
+            const priceInput = document.getElementById('itemPrice');
+            const quantityInput = document.getElementById('itemQuantity');
+            
+            const name = nameInput.value.trim();
+            const price = parseFloat(priceInput.value);
+            const quantity = parseInt(quantityInput.value);
+            
+            if (name && price > 0 && quantity > 0) {
+                const gstRateDetails = getGstRateDetails(name);
+
+                selectedItems.push({
+                    name: name,
+                    price: price,
+                    quantity: quantity,
+                    gstRate: gstRateDetails // Store the rate details
+                });
+                
+                // Clear inputs
+                nameInput.value = '';
+                priceInput.value = '';
+                quantityInput.value = '1';
+
+                renderCart();
+                
+                // Use the dedicated message function for feedback
+                showTempMessage(`✅ Added ${quantity} x ${name} at ${gstRateDetails.display} GST!`, 'success');
+                
+            } else {
+                // Use the dedicated message function for feedback
+                showTempMessage('Please enter valid Item Name, Price (>0), and Quantity (>0).', 'error');
+            }
+        }
+
+        /**
+         * Clears all items from the cart.
+         */
+        function clearCart() {
+            if (selectedItems.length > 0 && confirm("Are you sure you want to clear all items from the cart?")) {
+                selectedItems = [];
+                renderCart();
+                showTempMessage('Cart cleared.', 'error');
+            } else if (selectedItems.length === 0) {
+                showTempMessage('Cart is already empty.', 'error');
+            }
+        }
+
+        /**
+         * Renders the list of items in the dashboard cart preview.
+         */
+        function renderCart() {
+            const cartList = document.getElementById('cart-list');
+            const cartCount = document.getElementById('cart-count');
+            cartList.innerHTML = ''; // Clear previous content
+            
+            if (selectedItems.length === 0) {
+                cartList.innerHTML = '<li class="text-center text-gray-500 p-2">Cart is empty.</li>';
+            } else {
+                selectedItems.forEach(item => {
+                    const total = item.price * item.quantity;
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center text-gray-700 bg-white p-2 rounded-lg border-b';
+                    li.innerHTML = `
+                        <span class="truncate">${item.quantity} x ${item.name} (${item.gstRate.display} GST)</span>
+                        <span class="font-semibold text-indigo-600">${formatCurrency(total)}</span>
+                    `;
+                    cartList.appendChild(li);
+                });
+            }
+            
+            cartCount.textContent = selectedItems.length;
+        }
+
+        /**
+         * Renders the GST calculation report based on selectedItems and their assigned rates.
+         */
+        function renderReport() {
+            const tbody = document.getElementById('report-body');
+            tbody.innerHTML = ''; // Clear previous content
+            
+            let totalTaxableValue = 0;
+            let totalGST = 0;
+
+            if (selectedItems.length === 0) {
+                document.getElementById('summary-subtotal').textContent = formatCurrency(0);
+                document.getElementById('summary-gst').textContent = formatCurrency(0);
+                document.getElementById('summary-grandtotal').textContent = formatCurrency(0);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="5" class="px-6 py-4 text-center text-gray-500 italic">No items added to the cart. Please add items from the Dashboard.</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+
+            selectedItems.forEach(item => {
+                const taxableValue = item.price * item.quantity;
+                const itemGST = taxableValue * item.gstRate.rate;
+                
+                totalTaxableValue += taxableValue;
+                totalGST += itemGST;
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition duration-150';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right">${item.quantity}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right">${formatCurrency(item.price)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 text-right">${item.gstRate.display}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-600 text-right">${formatCurrency(taxableValue)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Calculate totals
+            const grandTotal = totalTaxableValue + totalGST;
+
+            // Update Summary
+            document.getElementById('summary-subtotal').textContent = formatCurrency(totalTaxableValue);
+            document.getElementById('summary-gst').textContent = formatCurrency(totalGST);
+            document.getElementById('summary-grandtotal').textContent = formatCurrency(grandTotal);
+        }
+
+        /**
+         * Simulates a login attempt.
+         */
+        // REPLACE: implement real login via backend
+        async function handleLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showTempMessage('Please enter both an email and password to log in.', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Login failed' }));
+                    showTempMessage(err.error || 'Invalid credentials', 'error', 3000);
+                    return;
+                }
+
+                const data = await res.json();
+                authToken = data.token;
+                localStorage.setItem('be_token', authToken);
+
+                showTempMessage('✅ Logged in successfully!', 'success', 2000);
+                navigateTo('dashboard');
+            } catch (e) {
+                showTempMessage('Network error. Please ensure the server is running.', 'error', 3000);
+            }
+        }
+
+        /**
+         * Clears fields and returns to the login page.
+         */
+        // REPLACE: clear stored token on logout
+        function logout() {
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            selectedItems = [];
+            authToken = null;
+            localStorage.removeItem('be_token');
+            navigateTo('login');
+        }
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // OPTIONAL: auto navigate to dashboard if token already exists
+            if (authToken) {
+                navigateTo('dashboard');
+            } else {
+                navigateTo('login');
+            }
+        });
+    </script>
+</body>
+</html>
